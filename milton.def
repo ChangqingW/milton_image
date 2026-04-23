@@ -19,9 +19,14 @@ From: rockylinux:9
         libquadmath \
         openssl-libs \
         ca-certificates \
-        glibc-langpack-en && \
+        glibc-langpack-en \
+        environment-modules \
+        diffutils \
+        which && \
     dnf clean all && \
-    rm -rf /var/cache/dnf
+    rm -rf /var/cache/dnf && \
+    echo '. /etc/profile.d/modules.sh' >> /etc/bash.bashrc && \
+    echo '. /etc/profile.d/modules.sh' >> /etc/zshrc
 
 %environment
     export LANG=en_US.UTF-8

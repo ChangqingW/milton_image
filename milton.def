@@ -1,0 +1,31 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Description  Sandbox with ABI compatibility with Milton (RHEL 9.3)
+    Author       wang.ch@wehi.edu.au
+
+%post
+    dnf install -y \
+        libgomp \
+        readline \
+        libicu \
+        libtirpc \
+        brotli \
+        libpsl \
+        libunistring \
+        libidn2 \
+        libgfortran \
+        libquadmath \
+        openssl-libs \
+        ca-certificates \
+        glibc-langpack-en && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+%environment
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+
+%runscript
+    exec "$@"

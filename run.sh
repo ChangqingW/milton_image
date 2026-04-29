@@ -54,6 +54,7 @@ HPC_BINDS=(
     "/stornext/System:/stornext/System:ro"
     "/lib:/lib:ro"
     "/lib64:/lib64:ro"
+    "/etc/localtime:/etc/localtime:ro"
     "/etc/fonts:/etc/fonts:ro"
     "/usr/local/share:/usr/local/share:ro"
     "/usr/share:/usr/share:ro"
@@ -102,7 +103,6 @@ APP_BINDS=(
     "$HOME/.local:$HOME/.local:$FILE_MODE"
     "$SANDBOX_HOME/.claude:$HOME/.claude:rw"
     "$SANDBOX_HOME/.claude.json:$HOME/.claude.json:rw"
-    "$HOME/.cargo:$HOME/.cargo:$FILE_MODE"
 )
 
 # RC files — bind only if they exist; missing file sources cause silent failures
@@ -151,6 +151,7 @@ ENV_ARGS=(
     --env "USER=$USER"
     --env "TERM=${TERM:-xterm-256color}"
     --env "LANG=${LANG:-en_US.UTF-8}"
+    --env "TZ=${TZ:-$(readlink /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||')}"
     --env "ZDOTDIR=$SANDBOX_HOME"
     --env "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}"
     --env "PATH=/usr/local/bin:/usr/bin:/bin${PATH:+:$PATH}"
@@ -159,10 +160,18 @@ ENV_ARGS=(
 [[ -n "${R_HOME:-}" ]]     && ENV_ARGS+=(--env "R_HOME=$R_HOME")
 [[ -n "${MODULEPATH:-}" ]] && ENV_ARGS+=(--env "MODULEPATH=$MODULEPATH")
 
+# ── User-local overrides ──────────────────────────────────────────────────────
+# run.local.sh (git-ignored) can append to USER_BINDS and USER_ENVS, e.g.:
+#   USER_BINDS+=(--bind "/data:/data:ro")
+#   USER_ENVS+=(--env "MY_VAR=value")
+USER_BINDS=()
+USER_ENVS=()
+[[ -f "$SCRIPT_DIR/run.local.sh" ]] && source "$SCRIPT_DIR/run.local.sh"
+
 if [[ $VERBOSE -eq 1 ]]; then
     echo "==> home mode: $HOME_MODE" >&2
     echo "==> Apptainer bind arguments:" >&2
-    for b in "${HPC_BINDS[@]}" "${HOME_BINDS[@]}" "${APP_BINDS[@]}" "${EXTRA_BINDS[@]}"; do
+    for b in "${HPC_BINDS[@]}" "${HOME_BINDS[@]}" "${APP_BINDS[@]}" "${EXTRA_BINDS[@]}" "${USER_BINDS[@]}"; do
         echo "    --bind $b \\" >&2
     done
     echo "    ${CMD[*]}" >&2
@@ -174,6 +183,8 @@ exec apptainer exec \
     --writable-tmpfs \
     "${BIND_ARGS[@]}" \
     "${EXTRA_BINDS[@]}" \
+    "${USER_BINDS[@]}" \
     "${ENV_ARGS[@]}" \
+    "${USER_ENVS[@]}" \
     "$IMAGE" \
     "${CMD[@]}"
